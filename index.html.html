@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Чат</title>
+  <style>
+    /* все стили те же, что были */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #app {
+      width: 1000px;
+      max-width: 98%;
+      height: 90vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #loginScreen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      gap: 12px;
+      background: white;
+      padding: 20px;
+    }
+    #loginScreen input {
+      padding: 12px 20px;
+      width: 280px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #loginScreen button {
+      padding: 12px 30px;
+      background: #0084ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #loginScreen button:hover { background: #006edc; }
+    #loginError { color: red; font-size: 14px; min-height: 20px; }
+
+    #chatScreen {
+      display: none;
+      flex: 1;
+      flex-direction: row;
+      height: 100%;
+    }
+
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      border-right: 1px solid #e0e0e0;
+    }
+    .chat-header {
+      padding: 12px 20px;
+      background: #f7f9fc;
+      border-bottom: 1px solid #e0e0e0;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-header .profile-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .chat-header .profile-info .avatar { font-size: 28px; }
+    .chat-header .profile-info .nick { font-weight: 600; }
+    .chat-header .profile-info .status { font-size: 12px; color: gray; }
+
+    .messages {
+      flex: 1;
+      padding: 15px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #fafafa;
+    }
+    .message {
+      max-width: 75%;
+      padding: 8px 14px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      position: relative;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .message.own {
+      align-self: flex-end;
+      background: #0084ff;
+      color: white;
+    }
+    .message.other {
+      align-self: flex-start;
+      background: #e4e6eb;
+      color: #050505;
+    }
+    .message.private {
+      border-left: 3px solid #6a1b9a;
+      background: #f3e5f5;
+    }
+    .message .sender {
+      font-weight: 600;
+      margin-right: 8px;
+      display: inline-block;
+    }
+    .message .time {
+      font-size: 10px;
+      opacity: 0.6;
+      margin-left: 10px;
+    }
+    .message .file-attachment {
+      display: block;
+      background: rgba(0,0,0,0.05);
+      padding: 5px 10px;
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 10px 15px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-area input[type="text"] {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      outline: none;
+      font-size: 14px;
+    }
+    .input-area input[type="text"]:focus { border-color: #0084ff; }
+    .input-area button {
+      padding: 8px 18px;
+      border: none;
+      background: #0084ff;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .input-area button:hover { background: #006edc; }
+    .input-area .file-buttons {
+      display: flex;
+      gap: 5px;
+    }
+    .input-area .file-buttons label {
+      background: #e4e6eb;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .input-area .file-buttons label:hover { background: #d0d2d6; }
+
+    .users-panel {
+      width: 220px;
+      background: #f7f9fc;
+      padding: 10px 0;
+      overflow-y: auto;
+      border-left: 1px solid #e0e0e0;
+    }
+    .users-panel .title {
+      padding: 0 15px 10px;
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .user-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 15px;
+      cursor: pointer;
+      gap: 8px;
+      transition: background 0.1s;
+    }
+    .user-item:hover { background: #e4e6eb; }
+    .user-item .avatar { font-size: 22px; }
+    .user-item .nick {
+      font-weight: 500;
+      flex: 1;
+    }
+    .user-item .status {
+      font-size: 12px;
+      color: gray;
+    }
+    .user-item .status.online { color: #31a24c; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      width: 400px;
+      max-width: 90%;
+    }
+    .modal-content h3 { margin-bottom: 20px; }
+    .modal-content label { display: block; margin: 10px 0 5px; }
+    .modal-content input[type="color"] { width: 100%; height: 40px; border: none; cursor: pointer; }
+    .modal-content .avatar-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 5px 0;
+    }
+    .modal-content .avatar-options span {
+      font-size: 30px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      transition: border 0.2s;
+    }
+    .modal-content .avatar-options span:hover,
+    .modal-content .avatar-options span.selected {
+      border-color: #0084ff;
+    }
+    .modal-content .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-content .actions button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .modal-content .actions .save { background: #0084ff; color: white; }
+    .modal-content .actions .cancel { background: #e4e6eb; }
+
+    /* новое: поле для IP */
+    .ip-input {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+    .ip-input input {
+      width: 200px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Окно входа -->
+  <div id="loginScreen">
+    <h2>Вход в чат</h2>
+    <input type="text" id="loginNick" placeholder="Ваше имя" />
+    <input type="password" id="loginPass" placeholder="Пароль" />
+    <div class="ip-input">
+      <label>IP сервера:</label>
+      <input type="text" id="serverIp" value="192.168.90.148" />
+    </div>
+    <button id="loginBtn">Войти / Зарегистрироваться</button>
+    <div id="loginError"></div>
+  </div>
+
+  <!-- Основной интерфейс -->
+  <div id="chatScreen">
+    <!-- Левая панель -->
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="profile-info" id="profileInfo">
+          <span class="avatar" id="myAvatar">😊</span>
+          <span class="nick" id="myNick">Пользователь</span>
+          <span class="status" id="myStatus">online</span>
+        </div>
+        <div>
+          <button id="profileEditBtn" style="background: none; border: none; cursor: pointer; font-size: 18px;">⚙️</button>
+        </div>
+      </div>
+      <div class="messages" id="messagesContainer"></div>
+      <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Введите сообщение..." />
+        <button id="sendBtn">➤</button>
+        <div class="file-buttons">
+          <label for="fileInput">📎 Файл</label>
+          <input type="file" id="fileInput" style="display: none;" multiple />
+          <label for="photoInput">📷 Фото</label>
+          <input type="file" id="photoInput" style="display: none;" accept="image/*" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Правая панель: пользователи -->
+    <div class="users-panel" id="usersPanel">
+      <div class="title">Кто в сети</div>
+      <div id="usersList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка кастомизации профиля -->
+<div class="modal" id="profileModal">
+  <div class="modal-content">
+    <h3>Настройка профиля</h3>
+    <label>Аватар</label>
+    <div class="avatar-options" id="avatarOptions">
+      <span>😊</span><span>😂</span><span>😍</span><span>🔥</span><span>👍</span><span>🎉</span>
+      <span>❤️</span><span>😢</span><span>😡</span><span>👋</span><span>🙏</span><span>💪</span>
+    </div>
+    <label>Цвет ника</label>
+    <input type="color" id="profileColor" value="#000000" />
+    <label>Статус</label>
+    <select id="profileStatus">
+      <option value="online">online</option>
+      <option value="away">away</option>
+      <option value="dnd">dnd</option>
+      <option value="invisible">invisible</option>
+    </select>
+    <div class="actions">
+      <button class="cancel" id="profileCancel">Отмена</button>
+      <button class="save" id="profileSave">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =========================== КЛИЕНТ ===========================
+// Получаем IP из поля ввода
+let ws = null;
+let myNickname = '';
+let myProfile = { avatar: '😊', color: '#000000', status: 'online' };
+let users = {};
+let messages = [];
+let selectedAvatar = '😊';
+
+// DOM элементы
+const loginScreen = document.getElementById('loginScreen');
+const chatScreen = document.getElementById('chatScreen');
+const loginNick = document.getElementById('loginNick');
+const loginPass = document.getElementById('loginPass');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const serverIpInput = document.getElementById('serverIp');
+const messagesContainer = document.getElementById('messagesContainer');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const usersList = document.getElementById('usersList');
+const myAvatar = document.getElementById('myAvatar');
+const myNick = document.getElementById('myNick');
+const myStatus = document.getElementById('myStatus');
+const profileInfo = document.getElementById('profileInfo');
+const profileEditBtn = document.getElementById('profileEditBtn');
+const profileModal = document.getElementById('profileModal');
+const avatarOptions = document.getElementById('avatarOptions');
+const profileColor = document.getElementById('profileColor');
+const profileStatus = document.getElementById('profileStatus');
+const profileCancel = document.getElementById('profileCancel');
+const profileSave = document.getElementById('profileSave');
+const fileInput = document.getElementById('fileInput');
+const photoInput = document.getElementById('photoInput');
+
+// ========== Вход ==========
+loginBtn.addEventListener('click', () => {
+  const nick = loginNick.value.trim();
+  const pass = loginPass.value.trim();
+  const ip = serverIpInput.value.trim() || '192.168.90.148';
+  if (!nick || !pass) {
+    loginError.textContent = 'Заполните все поля';
+    return;
+  }
+  loginError.textContent = '';
+
+  // Создаём WebSocket с указанным IP
+  const wsUrl = `ws://${ip}:5555`;
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'auth', nickname: nick, password: pass }));
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      handleServerMessage(data);
+    } catch (e) {
+      console.error('Ошибка парсинга сообщения:', e);
+    }
+  };
+
+  ws.onerror = (error) => {
+    loginError.textContent = 'Ошибка подключения к серверу. Проверьте IP и порт.';
+    console.error('WebSocket error:', error);
+  };
+
+  ws.onclose = () => {
+    if (!chatScreen.style.display || chatScreen.style.display === 'none') {
+      loginError.textContent = 'Соединение разорвано. Попробуйте снова.';
+    } else {
+      addSystemMessage('Соединение с сервером потеряно');
+    }
+  };
+});
+
+// ========== Обработка сообщений сервера ==========
+function handleServerMessage(data) {
+  switch (data.type) {
+    case 'auth_result':
+      if (data.success) {
+        loginScreen.style.display = 'none';
+        chatScreen.style.display = 'flex';
+        myNickname = loginNick.value.trim();
+      } else {
+        loginError.textContent = data.message;
+      }
+      break;
+
+    case 'user_list':
+      users = {};
+      data.users.forEach(u => {
+        users[u.nickname] = { avatar: u.avatar, color: u.color, status: u.status };
+        if (u.nickname === myNickname) {
+          myProfile = { avatar: u.avatar, color: u.color, status: u.status };
+          updateMyProfileUI();
+        }
+      });
+      renderUsersList();
+      break;
+
+    case 'history':
+      messages = data.messages;
+      renderMessages();
+      break;
+
+    case 'message':
+      addMessage(data.from, data.text, data.timestamp, false, data.avatar, data.color);
+      break;
+
+    case 'private':
+      addMessage(data.from, data.text, data.timestamp, true, data.avatar, data.color);
+      break;
+
+    case 'private_sent':
+      addMessage('Вы (личное)', data.text, data.timestamp, true, myProfile.avatar, myProfile.color, true);
+      break;
+
+    case 'private_error':
+      addSystemMessage(data.message);
+      break;
+
+    case 'file': {
+      const fileMsg = `📎 Файл: ${data.filename} (${data.filetype})`;
+      const blob = base64ToBlob(data.data, data.filetype === 'image' ? 'image/*' : 'application/octet-stream');
+      const url = URL.createObjectURL(blob);
+      const link = `<a href="${url}" download="${data.filename}">${data.filename}</a>`;
+      const fullHtml = `📎 Файл: ${link}`;
+      addFileMessage(data.from, fullHtml, data.timestamp, data.avatar, data.color);
+      break;
+    }
+
+    case 'profile_updated':
+      myProfile = { avatar: data.avatar, color: data.color, status: data.status };
+      updateMyProfileUI();
+      break;
+
+    default:
+      console.log('Неизвестный тип:', data);
+  }
+}
+
+// ========== Отправка сообщений ==========
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text) return;
+  messageInput.value = '';
+  ws.send(JSON.stringify({ type: 'message', text }));
+}
+
+// ========== Личные сообщения ==========
+usersList.addEventListener('dblclick', (e) => {
+  const item = e.target.closest('.user-item');
+  if (!item) return;
+  const nick = item.dataset.nick;
+  if (nick === myNickname) return;
+  const msg = prompt(`Личное сообщение для ${nick}:`);
+  if (msg && msg.trim()) {
+    ws.send(JSON.stringify({ type: 'private', recipient: nick, text: msg.trim() }));
+  }
+});
+
+// ========== Файлы ==========
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) sendFile(e.target.files[0], 'file');
+});
+photoInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) sendFile(e.target.files[0], 'image');
+});
+
+function sendFile(file, type) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(',')[1];
+    ws.send(JSON.stringify({
+      type: 'file',
+      filename: file.name,
+      filetype: type,
+      data: base64
+    }));
+  };
+  reader.readAsDataURL(file);
+  fileInput.value = '';
+  photoInput.value = '';
+}
+
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
+// ========== Отображение сообщений ==========
+function addMessage(from, text, timestamp, isPrivate = false, avatar = '😊', color = '#000000', isOwnPrivate = false) {
+  const time = timestamp ? new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+  const div = document.createElement('div');
+  div.className = `message ${from === myNickname ? 'own' : 'other'} ${isPrivate || isOwnPrivate ? 'private' : ''}`;
+  if (isPrivate && from !== myNickname) {
+    div.style.borderLeftColor = color;
+  }
+  const sender = from === myNickname ? 'Вы' : from;
+  const senderSpan = `<span class="sender" style="color:${color}">${sender}</span>`;
+  div.innerHTML = `${senderSpan} ${text} <span class="time">${time}</span>`;
+  messagesContainer.appendChild(div);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addSystemMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'message other';
+  div.style.alignSelf = 'center';
+  div.style.background = '#f0f0f0';
+  div.style.color = 'gray';
+  div.style.fontStyle = 'italic';
+  div.textContent = text;
+  messagesContainer.appendChild(div);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addFileMessage(from, html, timestamp, avatar, color) {
+  const time = timestamp ? new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+  const div = document.createElement('div');
+  div.className = `message ${from === myNickname ? 'own' : 'other'}`;
+  const sender = from === myNickname ? 'Вы' : from;
+  const senderSpan = `<span class="sender" style="color:${color}">${sender}</span>`;
+  div.innerHTML = `${senderSpan} ${html} <span class="time">${time}</span>`;
+  messagesContainer.appendChild(div);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function renderMessages() {
+  messagesContainer.innerHTML = '';
+  messages.forEach(msg => {
+    if (msg.is_file) {
+      const text = `📎 Файл: ${msg.message}`;
+      addMessage(msg.nickname, text, msg.timestamp, msg.is_private, null, null);
+    } else {
+      addMessage(msg.nickname, msg.message, msg.timestamp, msg.is_private, null, null);
+    }
+  });
+}
+
+// ========== Список пользователей ==========
+function renderUsersList() {
+  usersList.innerHTML = '';
+  for (const [nick, info] of Object.entries(users)) {
+    const div = document.createElement('div');
+    div.className = 'user-item';
+    div.dataset.nick = nick;
+    const statusClass = info.status === 'online' ? 'online' : '';
+    div.innerHTML = `
+      <span class="avatar">${info.avatar}</span>
+      <span class="nick" style="color:${info.color}">${nick}</span>
+      <span class="status ${statusClass}">${info.status}</span>
+    `;
+    usersList.appendChild(div);
+  }
+}
+
+// ========== Профиль (мой) ==========
+function updateMyProfileUI() {
+  myAvatar.textContent = myProfile.avatar;
+  myNick.textContent = myNickname;
+  myNick.style.color = myProfile.color;
+  myStatus.textContent = myProfile.status;
+  myStatus.className = 'status ' + (myProfile.status === 'online' ? 'online' : '');
+}
+
+// ========== Модалка редактирования профиля ==========
+profileEditBtn.addEventListener('click', () => {
+  selectedAvatar = myProfile.avatar;
+  profileColor.value = myProfile.color;
+  profileStatus.value = myProfile.status;
+  document.querySelectorAll('#avatarOptions span').forEach(el => {
+    el.classList.toggle('selected', el.textContent === selectedAvatar);
+  });
+  profileModal.style.display = 'flex';
+});
+
+avatarOptions.addEventListener('click', (e) => {
+  if (e.target.tagName === 'SPAN') {
+    document.querySelectorAll('#avatarOptions span').forEach(el => el.classList.remove('selected'));
+    e.target.classList.add('selected');
+    selectedAvatar = e.target.textContent;
+  }
+});
+
+profileCancel.addEventListener('click', () => {
+  profileModal.style.display = 'none';
+});
+
+profileSave.addEventListener('click', () => {
+  const avatar = selectedAvatar;
+  const color = profileColor.value;
+  const status = profileStatus.value;
+  ws.send(JSON.stringify({ type: 'update_profile', avatar, color, status }));
+  profileModal.style.display = 'none';
+});
+
+profileModal.addEventListener('click', (e) => {
+  if (e.target === profileModal) profileModal.style.display = 'none';
+});
+
+// ========== Инициализация ==========
+console.log('Клиент чата загружен. Подключитесь к серверу через WebSocket.');
+</script>
+</body>
+</html>
